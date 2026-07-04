@@ -9,6 +9,7 @@ from tiktok.routes import bp as tiktok_bp
 from tiktok.api import fetch_recent_videos, refresh_token as tiktok_refresh_token
 from common.poller import start as start_poller
 from common.state import update_token
+import discord_bot.bot as bot
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -24,6 +25,8 @@ def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None
 
 
 if __name__ == "__main__":
+    threading.Thread(target=bot.start, daemon=True).start()
+
     threading.Thread(
         target=start_poller,
         args=("instagram", fetch_recent_media),

@@ -7,10 +7,11 @@ from flask import Blueprint, redirect, request
 from config import TIKTOK_CLIENT_KEY, TIKTOK_REDIRECT_URI
 from tiktok.api import exchange_code, fetch_latest_video_id, fetch_username
 from common.state import upsert_user
+from common.link_state import _pending as link_pending
 
 bp = Blueprint("tiktok", __name__)
 
-_pending: dict[str, str] = {}
+_pending: dict[str, dict] = {}  # oauth_state -> {verifier, link_state}
 
 
 def _code_challenge(verifier: str) -> str:
@@ -22,8 +23,11 @@ def _code_challenge(verifier: str) -> str:
 def login():
     verifier = secrets.token_urlsafe(64)
     challenge = _code_challenge(verifier)
-    state = secrets.token_urlsafe(16)
-    _pending[state] = verifier
+    oauth_state = secrets.token_urlsafe(16)
+    _pending[oauth_state] = {
+        "verifier": verifier,
+        "link_state": request.args.get("link_state"),
+    }
 
     auth_url = (
         "https://www.tiktok.com/v2/auth/authorize/"
@@ -33,7 +37,7 @@ def login():
         "&response_type=code"
         f"&code_challenge={challenge}"
         "&code_challenge_method=S256"
-        f"&state={state}"
+        f"&state={oauth_state}"
     )
     return redirect(auth_url)
 
@@ -41,14 +45,19 @@ def login():
 @bp.route("/tiktok/callback")
 def callback():
     code = request.args.get("code")
-    state = request.args.get("state")
+    oauth_state = request.args.get("state")
 
     if not code:
         return request.args.get("error_description", "Authorization failed"), 400
 
-    verifier = _pending.pop(state, None) if state else None
-    if not verifier:
+    entry = _pending.pop(oauth_state, None) if oauth_state else None
+    if not entry:
         return "Session expired, please try again", 400
+
+    verifier = entry["verifier"]
+    link_info = link_pending.pop(entry["link_state"], None) if entry.get("link_state") else None
+    guild_id = link_info["guild_id"] if link_info else None
+    channel_id = link_info["channel_id"] if link_info else None
 
     token, open_id, refresh_tok = exchange_code(code, verifier)
     if not token or not open_id:
@@ -57,6 +66,6 @@ def callback():
     username = fetch_username(open_id, token)
     last_video_id = fetch_latest_video_id(open_id, token)
 
-    upsert_user("tiktok", open_id, username, token, last_video_id, refresh_tok)
-    print(f"[TIKTOK] @{username} connected. Baseline video: {last_video_id}")
+    upsert_user("tiktok", open_id, username, token, last_video_id, refresh_tok, guild_id, channel_id)
+    print(f"[TIKTOK] @{username} connected. Channel: {channel_id}. Baseline: {last_video_id}")
     return f"@{username} connected successfully. You can close this tab."

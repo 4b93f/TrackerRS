@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     token TEXT NOT NULL,
     last_media_id TEXT,
     refresh_token TEXT,
+    guild_id TEXT,
+    channel_id TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (platform, user_id)
