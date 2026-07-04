@@ -6,13 +6,21 @@ from flask import Flask
 from instagram.routes import bp as instagram_bp
 from instagram.api import fetch_recent_media
 from tiktok.routes import bp as tiktok_bp
-from tiktok.api import fetch_recent_videos
+from tiktok.api import fetch_recent_videos, refresh_token as tiktok_refresh_token
 from common.poller import start as start_poller
+from common.state import update_token
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 app.register_blueprint(instagram_bp)
 app.register_blueprint(tiktok_bp)
+
+
+def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None:
+    new_token, new_refresh = tiktok_refresh_token(refresh_tok)
+    if new_token:
+        update_token(platform, user_id, new_token, new_refresh)
+    return new_token
 
 
 if __name__ == "__main__":
@@ -25,6 +33,7 @@ if __name__ == "__main__":
     threading.Thread(
         target=start_poller,
         args=("tiktok", fetch_recent_videos),
+        kwargs={"refresh_fn": _tiktok_refresh},
         daemon=True
     ).start()
 

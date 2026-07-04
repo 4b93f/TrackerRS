@@ -57,6 +57,6 @@ def callback():
     username = fetch_username(open_id, token)
     last_video_id = fetch_latest_video_id(open_id, token)
 
-    upsert_user("tiktok", open_id, username, token, last_video_id)
+    upsert_user("tiktok", open_id, username, token, last_video_id, refresh_tok)
     print(f"[TIKTOK] @{username} connected. Baseline video: {last_video_id}")
     return f"@{username} connected successfully. You can close this tab."

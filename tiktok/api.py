@@ -51,13 +51,15 @@ def fetch_latest_video_id(open_id: str, token: str) -> str | None:
     return videos[0]["id"] if videos else None
 
 
-def fetch_recent_videos(open_id: str, token: str) -> list[dict]:
+def fetch_recent_videos(open_id: str, token: str) -> list[dict] | None:
     r = requests.post(
         "https://open.tiktokapis.com/v2/video/list/",
         params={"fields": "id,create_time,share_url,cover_image_url"},
         json={"max_count": 5},
         headers={"Authorization": f"Bearer {token}"},
     )
+    if r.status_code == 401:
+        return None
     if not r.ok:
         print(f"[TIKTOK] Video fetch error for {open_id}: {r.text}")
         return []
