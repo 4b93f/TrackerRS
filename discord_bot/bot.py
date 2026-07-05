@@ -18,41 +18,14 @@ async def on_ready():
     print(f"[DISCORD BOT] Logged in as {client.user}", flush=True)
 
 
-@tree.command(name="link", description="Connect a social media account for tracking")
-@app_commands.describe(platform="Platform to track", username="Twitch username (Twitch only)")
+@tree.command(name="link", description="Connect a TikTok or Instagram account for tracking")
+@app_commands.describe(platform="Platform to track")
 @app_commands.choices(platform=[
     app_commands.Choice(name="TikTok", value="tiktok"),
     app_commands.Choice(name="Instagram", value="instagram"),
-    app_commands.Choice(name="Twitch", value="twitch"),
 ])
-async def link(interaction: discord.Interaction, platform: app_commands.Choice[str], username: str | None = None):
+async def link(interaction: discord.Interaction, platform: app_commands.Choice[str]):
     print(f"[DISCORD BOT] /link {platform.value} by {interaction.user} in guild {interaction.guild_id}", flush=True)
-    if platform.value == "twitch":
-        if not username:
-            await interaction.response.send_message("Provide a Twitch username: `/link twitch username:streamername`", ephemeral=True)
-            return
-        await interaction.response.defer(ephemeral=True)
-        from twitch.api import get_user, subscribe
-        from twitch.state import upsert_channel
-        user_id, display_name = await asyncio.to_thread(get_user, username)
-        if not user_id:
-            await interaction.followup.send(f"Twitch user `{username}` not found.", ephemeral=True)
-            return
-        ok = await asyncio.to_thread(subscribe, user_id)
-        if not ok:
-            await interaction.followup.send("Failed to subscribe. Check server logs.", ephemeral=True)
-            return
-        await asyncio.to_thread(
-            upsert_channel, user_id, display_name,
-            str(interaction.guild_id), str(interaction.channel_id)
-        )
-        print(f"[DISCORD BOT] Twitch @{display_name} linked to channel {interaction.channel_id}", flush=True)
-        await interaction.followup.send(
-            f"Now tracking **{display_name}** on Twitch. Notifications will be sent to this channel.",
-            ephemeral=True,
-        )
-        return
-
     state = secrets.token_urlsafe(16)
     link_pending[state] = {
         "guild_id": str(interaction.guild_id),
@@ -64,6 +37,32 @@ async def link(interaction: discord.Interaction, platform: app_commands.Choice[s
         f"Connect your **{platform.name}** account by clicking the link below.\n"
         f"Notifications will be sent to this channel.\n\n{url}\n\n"
         f"-# Link expires after use.",
+        ephemeral=True,
+    )
+
+
+@tree.command(name="track", description="Track a Twitch channel for live notifications")
+@app_commands.describe(username="Twitch channel name")
+async def track(interaction: discord.Interaction, username: str):
+    print(f"[DISCORD BOT] /track {username} by {interaction.user} in guild {interaction.guild_id}", flush=True)
+    await interaction.response.defer(ephemeral=True)
+    from twitch.api import get_user, subscribe
+    from twitch.state import upsert_channel
+    user_id, display_name = await asyncio.to_thread(get_user, username)
+    if not user_id:
+        await interaction.followup.send(f"Twitch user `{username}` not found.", ephemeral=True)
+        return
+    ok = await asyncio.to_thread(subscribe, user_id)
+    if not ok:
+        await interaction.followup.send("Failed to subscribe. Check server logs.", ephemeral=True)
+        return
+    await asyncio.to_thread(
+        upsert_channel, user_id, display_name,
+        str(interaction.guild_id), str(interaction.channel_id)
+    )
+    print(f"[DISCORD BOT] Twitch @{display_name} linked to channel {interaction.channel_id}", flush=True)
+    await interaction.followup.send(
+        f"Now tracking **{display_name}** on Twitch. Notifications will be sent to this channel.",
         ephemeral=True,
     )
 
@@ -92,14 +91,18 @@ async def setchannel(interaction: discord.Interaction):
     app_commands.Choice(name="Twitch", value="twitch"),
 ])
 async def test(interaction: discord.Interaction, platform: app_commands.Choice[str]):
-    from common.discord import send_notification
-    fake_posts = {
-        "tiktok": {"title": "Test TikTok post", "share_url": "https://tiktok.com", "cover_image_url": None},
-        "instagram": {"caption": "Test Instagram post", "permalink": "https://instagram.com", "media_type": "IMAGE", "media_url": None},
-        "twitch": {"title": "Test stream title", "game": "Just Chatting", "url": "https://twitch.tv/test", "thumbnail_url": None},
-    }
-    send_notification("testuser", platform.value, fake_posts[platform.value], channel_id=str(interaction.channel_id))
-    await interaction.response.send_message(f"Test {platform.name} notification sent.", ephemeral=True)
+    try:
+        fake_posts = {
+            "tiktok": {"title": "Test TikTok post", "share_url": "https://tiktok.com", "cover_image_url": None},
+            "instagram": {"caption": "Test Instagram post", "permalink": "https://instagram.com", "media_type": "IMAGE", "media_url": None},
+            "twitch": {"title": "Test stream title", "game": "Just Chatting", "url": "https://twitch.tv/test", "thumbnail_url": None},
+        }
+        embed = discord.Embed(title=f"Test {platform.name} notification", description="If you see this, notifications are working.", color=0x00FF00)
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message(f"Test sent.", ephemeral=True)
+    except Exception as e:
+        print(f"[DISCORD BOT] /test error: {e}", flush=True)
+        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
 async def _send_embed(channel_id: int, embed: discord.Embed):
