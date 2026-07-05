@@ -53,6 +53,16 @@ def update_token(platform: str, user_id: str, token: str, refresh_token: str | N
             )
 
 
+def set_channel(platform: str, username: str, guild_id: str, channel_id: str) -> bool:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET guild_id = %s, channel_id = %s, updated_at = NOW() WHERE platform = %s AND username = %s",
+                (guild_id, channel_id, platform, username)
+            )
+            return cur.rowcount > 0
+
+
 def update_last_media_id(platform: str, user_id: str, last_media_id: str):
     with _conn() as conn:
         with conn.cursor() as cur:

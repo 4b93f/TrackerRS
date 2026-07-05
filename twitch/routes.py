@@ -9,28 +9,34 @@ bp = Blueprint("twitch", __name__)
 
 @bp.route("/twitch/webhook", methods=["POST"])
 def webhook():
+    msg_type = request.headers.get("Twitch-Eventsub-Message-Type")
+    print(f"[TWITCH] Webhook received: type={msg_type}", flush=True)
+
     if not verify_signature(request):
+        print(f"[TWITCH] Invalid signature", flush=True)
         return "Forbidden", 403
 
-    msg_type = request.headers.get("Twitch-Eventsub-Message-Type")
-
     if msg_type == "webhook_callback_verification":
+        print(f"[TWITCH] Challenge verified", flush=True)
         return request.json["challenge"], 200
 
     if msg_type == "notification":
         event = request.json.get("event", {})
         user_id = event.get("broadcaster_user_id")
         username = event.get("broadcaster_user_name")
+        print(f"[TWITCH] {username} ({user_id}) went live", flush=True)
         channel = get_channel(user_id)
-        if channel:
+        if not channel:
+            print(f"[TWITCH] No channel found for {user_id}, skipping", flush=True)
+        else:
             stream = get_stream_info(user_id)
+            print(f"[TWITCH] Stream info: title={stream.get('title')} game={stream.get('game_name')}", flush=True)
             post = {
                 "title": stream.get("title", ""),
                 "game": stream.get("game_name", ""),
                 "url": f"https://twitch.tv/{event.get('broadcaster_user_login', '')}",
                 "thumbnail_url": stream.get("thumbnail_url", "").replace("{width}", "1280").replace("{height}", "720"),
             }
-            print(f"[TWITCH] {username} went live")
             send_notification(username, "twitch", post, channel_id=channel.get("channel_id"))
 
     return "", 204
