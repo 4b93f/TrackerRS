@@ -4,31 +4,41 @@ import discord
 from config import DISCORD_WEBHOOK_URL
 from discord_bot.bot import send_to_channel
 
-_COLORS = {"instagram": 0xE1306C, "tiktok": 0x69C9D0}
+_COLORS = {"instagram": 0xE1306C, "tiktok": 0x69C9D0, "twitch": 0x9147FF}
 
 
 def send_notification(username: str, platform: str, post: dict, channel_id: str | None = None):
-    if platform == "tiktok":
-        caption = post.get("title", "")
+    if platform == "twitch":
+        title = f"🔴 {username} is live!"
+        url = post.get("url", f"https://twitch.tv/{username}")
+        description = post.get("title", "")
+        if post.get("game"):
+            description += f"\n**{post['game']}**"
+        image_url = post.get("thumbnail_url")
+        footer = "Twitch · Live"
+    elif platform == "tiktok":
+        title = f"New post from @{username}"
+        description = post.get("title", "")
         url = post.get("share_url", "")
         image_url = post.get("cover_image_url")
-        media_type = "Video"
+        footer = "TikTok · Video"
     else:
-        caption = post.get("caption", "")
+        title = f"New post from @{username}"
+        description = post.get("caption", "")
         url = post.get("permalink", "")
         image_url = post.get("media_url") or post.get("thumbnail_url")
-        media_type = post.get("media_type", "POST").capitalize()
+        footer = f"Instagram · {post.get('media_type', 'POST').capitalize()}"
 
-    if len(caption) > 200:
-        caption = caption[:200] + "..."
+    if len(description) > 200:
+        description = description[:200] + "..."
 
     embed = discord.Embed(
-        title=f"New post from @{username}",
+        title=title,
         url=url,
-        description=caption,
+        description=description,
         color=_COLORS.get(platform, 0x5865F2),
     )
-    embed.set_footer(text=f"{platform.capitalize()} · {media_type}")
+    embed.set_footer(text=footer)
     if image_url:
         embed.set_image(url=image_url)
 

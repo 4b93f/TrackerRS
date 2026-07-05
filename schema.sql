@@ -11,3 +11,11 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (platform, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS twitch_channels (
+    user_id TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    guild_id TEXT,
+    channel_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);

@@ -6,6 +6,7 @@ from flask import Flask
 from instagram.routes import bp as instagram_bp
 from instagram.api import fetch_recent_media
 from tiktok.routes import bp as tiktok_bp
+from twitch.routes import bp as twitch_bp
 from tiktok.api import fetch_recent_videos, refresh_token as tiktok_refresh_token
 from common.poller import start as start_poller
 from common.state import update_token
@@ -15,6 +16,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 app.register_blueprint(instagram_bp)
 app.register_blueprint(tiktok_bp)
+app.register_blueprint(twitch_bp)
 
 
 def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None:
