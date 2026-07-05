@@ -27,7 +27,8 @@ def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None
 
 
 if __name__ == "__main__":
-    threading.Thread(target=bot.start, daemon=True).start()
+    if os.getenv("DISCORD_BOT_TOKEN", "disabled") != "disabled":
+        threading.Thread(target=bot.start, daemon=True).start()
 
     threading.Thread(
         target=start_poller,
