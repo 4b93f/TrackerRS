@@ -68,40 +68,20 @@ async def link(interaction: discord.Interaction, platform: app_commands.Choice[s
     )
 
 
-@tree.command(name="setchannel", description="Move notifications for a tracked account to this channel")
-@app_commands.describe(platform="Platform", username="Username or Twitch channel name")
-@app_commands.choices(platform=[
-    app_commands.Choice(name="TikTok", value="tiktok"),
-    app_commands.Choice(name="Instagram", value="instagram"),
-    app_commands.Choice(name="Twitch", value="twitch"),
-])
-async def setchannel(interaction: discord.Interaction, platform: app_commands.Choice[str], username: str):
-    print(f"[DISCORD BOT] /setchannel {platform.value} {username} -> channel {interaction.channel_id}", flush=True)
+@tree.command(name="setchannel", description="Send all notifications for this server to this channel")
+async def setchannel(interaction: discord.Interaction):
     channel_id = str(interaction.channel_id)
     guild_id = str(interaction.guild_id)
+    print(f"[DISCORD BOT] /setchannel guild {guild_id} -> channel {channel_id}", flush=True)
 
-    if platform.value == "twitch":
-        from twitch.api import get_user
-        from twitch.state import upsert_channel
-        user_id, display_name = await asyncio.to_thread(get_user, username)
-        if not user_id:
-            await interaction.response.send_message(f"Twitch user `{username}` not found.", ephemeral=True)
-            return
-        await asyncio.to_thread(upsert_channel, user_id, display_name, guild_id, channel_id)
-        await interaction.response.send_message(
-            f"**{display_name}** Twitch notifications moved to this channel.", ephemeral=True
-        )
-    else:
-        from common.state import set_channel
-        updated = await asyncio.to_thread(set_channel, platform.value, username, guild_id, channel_id)
-        if not updated:
-            await interaction.response.send_message(
-                f"`{username}` not found in tracked {platform.name} accounts.", ephemeral=True
-            )
-            return
-        await interaction.response.send_message(
-            f"**@{username}** {platform.name} notifications moved to this channel.", ephemeral=True
-        )
+    from common.state import set_guild_channel
+    from twitch.state import set_guild_channel as twitch_set_guild_channel
+    count = await asyncio.to_thread(set_guild_channel, guild_id, channel_id)
+    count += await asyncio.to_thread(twitch_set_guild_channel, guild_id, channel_id)
+    await interaction.response.send_message(
+        f"Done. {count} tracked account(s) will now send notifications to this channel.",
+        ephemeral=True,
+    )
 
 
 @tree.command(name="test", description="Send a test notification to this channel")

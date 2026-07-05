@@ -26,6 +26,16 @@ def get_all_channels() -> list[dict]:
             return [dict(row) for row in cur.fetchall()]
 
 
+def set_guild_channel(guild_id: str, channel_id: str) -> int:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE twitch_channels SET channel_id = %s WHERE guild_id = %s",
+                (channel_id, guild_id)
+            )
+            return cur.rowcount
+
+
 def upsert_channel(user_id: str, username: str, guild_id: str | None, channel_id: str | None):
     with _conn() as conn:
         with conn.cursor() as cur:
