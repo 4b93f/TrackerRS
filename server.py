@@ -28,7 +28,12 @@ def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None
 
 if __name__ == "__main__":
     if os.getenv("DISCORD_BOT_TOKEN", "disabled") != "disabled":
-        threading.Thread(target=bot.start, daemon=True).start()
+        def _run_bot():
+            try:
+                bot.start()
+            except Exception as e:
+                print(f"[DISCORD BOT] Fatal error: {e}", flush=True)
+        threading.Thread(target=_run_bot, daemon=True).start()
 
     threading.Thread(
         target=start_poller,
