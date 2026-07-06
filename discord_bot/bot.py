@@ -18,51 +18,42 @@ async def on_ready():
     print(f"[DISCORD BOT] Logged in as {client.user}", flush=True)
 
 
-@tree.command(name="link", description="Connect a TikTok or Instagram account for tracking")
-@app_commands.describe(platform="Platform to track")
+@tree.command(name="track", description="Track a social media account")
+@app_commands.describe(platform="Platform to track", username="Username (Twitch only)")
 @app_commands.choices(platform=[
     app_commands.Choice(name="TikTok", value="tiktok"),
     app_commands.Choice(name="Instagram", value="instagram"),
+    app_commands.Choice(name="Twitch", value="twitch"),
 ])
-async def link(interaction: discord.Interaction, platform: app_commands.Choice[str]):
-    print(f"[DISCORD BOT] /link {platform.value} by {interaction.user} in guild {interaction.guild_id}", flush=True)
+async def track(interaction: discord.Interaction, platform: app_commands.Choice[str], username: str | None = None):
+    print(f"[DISCORD BOT] /track {platform.value} {username} by {interaction.user}", flush=True)
+    if platform.value == "twitch":
+        if not username:
+            await interaction.response.send_message("Provide a username: `/track platform:Twitch username:streamername`", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        from twitch.api import get_user, subscribe
+        from twitch.state import upsert_channel
+        user_id, display_name = await asyncio.to_thread(get_user, username)
+        if not user_id:
+            await interaction.followup.send(f"Twitch user `{username}` not found.", ephemeral=True)
+            return
+        ok = await asyncio.to_thread(subscribe, user_id)
+        if not ok:
+            await interaction.followup.send("Failed to subscribe. Check server logs.", ephemeral=True)
+            return
+        await asyncio.to_thread(upsert_channel, user_id, display_name, str(interaction.guild_id), str(interaction.channel_id))
+        print(f"[DISCORD BOT] Twitch @{display_name} linked to channel {interaction.channel_id}", flush=True)
+        await interaction.followup.send(f"Now tracking **{display_name}** on Twitch. Notifications will be sent to this channel.", ephemeral=True)
+        return
+
     state = secrets.token_urlsafe(16)
-    link_pending[state] = {
-        "guild_id": str(interaction.guild_id),
-        "channel_id": str(interaction.channel_id),
-    }
+    link_pending[state] = {"guild_id": str(interaction.guild_id), "channel_id": str(interaction.channel_id)}
     url = f"{BASE_URL}/{platform.value}/login?link_state={state}"
     print(f"[DISCORD BOT] {platform.value} link generated for guild {interaction.guild_id}", flush=True)
     await interaction.response.send_message(
         f"Connect your **{platform.name}** account by clicking the link below.\n"
-        f"Notifications will be sent to this channel.\n\n{url}\n\n"
-        f"-# Link expires after use.",
-        ephemeral=True,
-    )
-
-
-@tree.command(name="track", description="Track a Twitch channel for live notifications")
-@app_commands.describe(username="Twitch channel name")
-async def track(interaction: discord.Interaction, username: str):
-    print(f"[DISCORD BOT] /track {username} by {interaction.user} in guild {interaction.guild_id}", flush=True)
-    await interaction.response.defer(ephemeral=True)
-    from twitch.api import get_user, subscribe
-    from twitch.state import upsert_channel
-    user_id, display_name = await asyncio.to_thread(get_user, username)
-    if not user_id:
-        await interaction.followup.send(f"Twitch user `{username}` not found.", ephemeral=True)
-        return
-    ok = await asyncio.to_thread(subscribe, user_id)
-    if not ok:
-        await interaction.followup.send("Failed to subscribe. Check server logs.", ephemeral=True)
-        return
-    await asyncio.to_thread(
-        upsert_channel, user_id, display_name,
-        str(interaction.guild_id), str(interaction.channel_id)
-    )
-    print(f"[DISCORD BOT] Twitch @{display_name} linked to channel {interaction.channel_id}", flush=True)
-    await interaction.followup.send(
-        f"Now tracking **{display_name}** on Twitch. Notifications will be sent to this channel.",
+        f"Notifications will be sent to this channel.\n\n{url}\n\n-# Link expires after use.",
         ephemeral=True,
     )
 
@@ -96,7 +87,7 @@ async def list_accounts(interaction: discord.Interaction, platform: app_commands
         await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
-@tree.command(name="unlink", description="Stop tracking an account")
+@tree.command(name="untrack", description="Stop tracking an account")
 @app_commands.describe(platform="Platform", username="Username to untrack")
 @app_commands.choices(platform=[
     app_commands.Choice(name="TikTok", value="tiktok"),
