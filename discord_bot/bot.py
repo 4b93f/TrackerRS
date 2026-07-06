@@ -75,21 +75,25 @@ async def track(interaction: discord.Interaction, username: str):
     app_commands.Choice(name="Twitch", value="twitch"),
 ])
 async def list_accounts(interaction: discord.Interaction, platform: app_commands.Choice[str] | None = None):
-    from common.state import get_users_for_guild
-    from twitch.state import get_channels_for_guild
-    guild_id = str(interaction.guild_id)
-    lines = []
-    if platform is None or platform.value != "twitch":
-        users = await asyncio.to_thread(get_users_for_guild, guild_id)
-        lines += [f"**{u['platform'].capitalize()}** — @{u['username']}" for u in users
-                  if platform is None or u['platform'] == platform.value]
-    if platform is None or platform.value == "twitch":
-        twitch = await asyncio.to_thread(get_channels_for_guild, guild_id)
-        lines += [f"**Twitch** — {t['username']}" for t in twitch]
-    if not lines:
-        await interaction.response.send_message("No tracked accounts.", ephemeral=True)
-    else:
-        await interaction.response.send_message("\n".join(lines), ephemeral=True)
+    try:
+        from common.state import get_users_for_guild
+        from twitch.state import get_channels_for_guild
+        guild_id = str(interaction.guild_id)
+        lines = []
+        if platform is None or platform.value != "twitch":
+            users = await asyncio.to_thread(get_users_for_guild, guild_id)
+            lines += [f"**{u['platform'].capitalize()}** — @{u['username']}" for u in users
+                      if platform is None or u['platform'] == platform.value]
+        if platform is None or platform.value == "twitch":
+            twitch = await asyncio.to_thread(get_channels_for_guild, guild_id)
+            lines += [f"**Twitch** — {t['username']}" for t in twitch]
+        if not lines:
+            await interaction.response.send_message("No tracked accounts.", ephemeral=True)
+        else:
+            await interaction.response.send_message("\n".join(lines), ephemeral=True)
+    except Exception as e:
+        print(f"[DISCORD BOT] /list error: {e}", flush=True)
+        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
 @tree.command(name="unlink", description="Stop tracking an account")
