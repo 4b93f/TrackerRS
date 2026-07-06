@@ -169,14 +169,17 @@ async def setchannel(interaction: discord.Interaction):
 ])
 async def test(interaction: discord.Interaction, platform: app_commands.Choice[str]):
     try:
+        from common.discord import send_notification
+        from common.state import get_role
         fake_posts = {
             "tiktok": {"title": "Test TikTok post", "share_url": "https://tiktok.com", "cover_image_url": None},
             "instagram": {"caption": "Test Instagram post", "permalink": "https://instagram.com", "media_type": "IMAGE", "media_url": None},
             "twitch": {"title": "Test stream title", "game": "Just Chatting", "url": "https://twitch.tv/test", "thumbnail_url": None},
         }
-        embed = discord.Embed(title=f"Test {platform.name} notification", description="If you see this, notifications are working.", color=0x00FF00)
-        await interaction.channel.send(embed=embed)
-        await interaction.response.send_message(f"Test sent.", ephemeral=True)
+        role_id = await asyncio.to_thread(get_role, str(interaction.guild_id), platform.value)
+        send_notification("testuser", platform.value, fake_posts[platform.value],
+                          channel_id=str(interaction.channel_id), role_id=role_id)
+        await interaction.response.send_message("Test sent.", ephemeral=True)
     except Exception as e:
         print(f"[DISCORD BOT] /test error: {e}", flush=True)
         await interaction.response.send_message(f"Error: {e}", ephemeral=True)
