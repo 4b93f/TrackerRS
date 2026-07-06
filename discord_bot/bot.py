@@ -67,6 +67,59 @@ async def track(interaction: discord.Interaction, username: str):
     )
 
 
+@tree.command(name="list", description="List tracked accounts for this server")
+@app_commands.describe(platform="Filter by platform (optional)")
+@app_commands.choices(platform=[
+    app_commands.Choice(name="TikTok", value="tiktok"),
+    app_commands.Choice(name="Instagram", value="instagram"),
+    app_commands.Choice(name="Twitch", value="twitch"),
+])
+async def list_accounts(interaction: discord.Interaction, platform: app_commands.Choice[str] | None = None):
+    from common.state import get_users_for_guild
+    from twitch.state import get_channels_for_guild
+    guild_id = str(interaction.guild_id)
+    lines = []
+    if platform is None or platform.value != "twitch":
+        users = await asyncio.to_thread(get_users_for_guild, guild_id)
+        lines += [f"**{u['platform'].capitalize()}** — @{u['username']}" for u in users
+                  if platform is None or u['platform'] == platform.value]
+    if platform is None or platform.value == "twitch":
+        twitch = await asyncio.to_thread(get_channels_for_guild, guild_id)
+        lines += [f"**Twitch** — {t['username']}" for t in twitch]
+    if not lines:
+        await interaction.response.send_message("No tracked accounts.", ephemeral=True)
+    else:
+        await interaction.response.send_message("\n".join(lines), ephemeral=True)
+
+
+@tree.command(name="unlink", description="Stop tracking an account")
+@app_commands.describe(platform="Platform", username="Username to untrack")
+@app_commands.choices(platform=[
+    app_commands.Choice(name="TikTok", value="tiktok"),
+    app_commands.Choice(name="Instagram", value="instagram"),
+    app_commands.Choice(name="Twitch", value="twitch"),
+])
+async def unlink(interaction: discord.Interaction, platform: app_commands.Choice[str], username: str):
+    print(f"[DISCORD BOT] /unlink {platform.value} {username} by {interaction.user}", flush=True)
+    guild_id = str(interaction.guild_id)
+    if platform.value == "twitch":
+        from twitch.api import get_user, unsubscribe
+        from twitch.state import delete_channel
+        user_id, _ = await asyncio.to_thread(get_user, username)
+        if not user_id:
+            await interaction.response.send_message(f"Twitch user `{username}` not found.", ephemeral=True)
+            return
+        await asyncio.to_thread(unsubscribe, user_id)
+        await asyncio.to_thread(delete_channel, user_id)
+    else:
+        from common.state import delete_user
+        deleted = await asyncio.to_thread(delete_user, platform.value, username, guild_id)
+        if not deleted:
+            await interaction.response.send_message(f"`{username}` not found in tracked {platform.name} accounts.", ephemeral=True)
+            return
+    await interaction.response.send_message(f"Stopped tracking **@{username}** on {platform.name}.", ephemeral=True)
+
+
 @tree.command(name="setchannel", description="Send all notifications for this server to this channel")
 async def setchannel(interaction: discord.Interaction):
     channel_id = str(interaction.channel_id)
