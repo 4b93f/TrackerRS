@@ -69,6 +69,22 @@ def subscribe(user_id: str) -> bool:
     return r.status_code in (200, 202, 409)
 
 
+def unsubscribe(user_id: str) -> bool:
+    r = requests.get(
+        "https://api.twitch.tv/helix/eventsub/subscriptions",
+        params={"user_id": user_id},
+        headers=_headers(),
+    )
+    for sub in r.json().get("data", []):
+        requests.delete(
+            "https://api.twitch.tv/helix/eventsub/subscriptions",
+            params={"id": sub["id"]},
+            headers=_headers(),
+        )
+    print(f"[TWITCH] Unsubscribed {user_id}", flush=True)
+    return True
+
+
 def verify_signature(request) -> bool:
     msg_id = request.headers.get("Twitch-Eventsub-Message-Id", "")
     timestamp = request.headers.get("Twitch-Eventsub-Message-Timestamp", "")

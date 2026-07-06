@@ -36,6 +36,22 @@ def set_guild_channel(guild_id: str, channel_id: str) -> int:
             return cur.rowcount
 
 
+def get_channels_for_guild(guild_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT user_id, username FROM twitch_channels WHERE guild_id = %s",
+                (guild_id,)
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+
+def delete_channel(user_id: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM twitch_channels WHERE user_id = %s", (user_id,))
+
+
 def upsert_channel(user_id: str, username: str, guild_id: str | None, channel_id: str | None):
     with _conn() as conn:
         with conn.cursor() as cur:

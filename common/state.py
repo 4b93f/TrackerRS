@@ -53,6 +53,26 @@ def update_token(platform: str, user_id: str, token: str, refresh_token: str | N
             )
 
 
+def get_users_for_guild(guild_id: str) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT platform, username FROM users WHERE guild_id = %s",
+                (guild_id,)
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+
+def delete_user(platform: str, username: str, guild_id: str) -> bool:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM users WHERE platform = %s AND username = %s AND guild_id = %s",
+                (platform, username, guild_id)
+            )
+            return cur.rowcount > 0
+
+
 def set_guild_channel(guild_id: str, channel_id: str) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
