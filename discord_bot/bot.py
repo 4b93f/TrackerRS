@@ -132,12 +132,16 @@ async def unlink(interaction: discord.Interaction, platform: app_commands.Choice
     app_commands.Choice(name="Twitch", value="twitch"),
 ])
 async def setrole(interaction: discord.Interaction, platform: app_commands.Choice[str], role: discord.Role):
-    from common.state import set_role
-    await asyncio.to_thread(set_role, str(interaction.guild_id), platform.value, str(role.id))
-    print(f"[DISCORD BOT] Role {role.id} set for {platform.value} in guild {interaction.guild_id}", flush=True)
-    await interaction.response.send_message(
-        f"{platform.name} notifications will now ping **@{role.name}**.", ephemeral=True
-    )
+    try:
+        from common.state import set_role
+        await asyncio.to_thread(set_role, str(interaction.guild_id), platform.value, str(role.id))
+        print(f"[DISCORD BOT] Role {role.id} set for {platform.value} in guild {interaction.guild_id}", flush=True)
+        await interaction.response.send_message(
+            f"{platform.name} notifications will now ping **@{role.name}**.", ephemeral=True
+        )
+    except Exception as e:
+        print(f"[DISCORD BOT] /setrole error: {e}", flush=True)
+        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
 @tree.command(name="setchannel", description="Send all notifications for this server to this channel")
