@@ -54,7 +54,7 @@ def fetch_latest_video_id(open_id: str, token: str) -> str | None:
 def fetch_recent_videos(open_id: str, token: str) -> list[dict] | None:
     r = requests.post(
         "https://open.tiktokapis.com/v2/video/list/",
-        params={"fields": "id,create_time,share_url,cover_image_url"},
+        params={"fields": "id,title,create_time,share_url,cover_image_url"},
         json={"max_count": 5},
         headers={"Authorization": f"Bearer {token}"},
     )
