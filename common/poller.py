@@ -44,6 +44,11 @@ def _check(platform: str, user: dict, fetch_recent: Callable, refresh_fn: Callab
 
     update_last_media_id(platform, user["user_id"], posts[0]["id"])
     channel_id = user.get("channel_id")
+    guild_id = user.get("guild_id")
+    role_id = None
+    if guild_id:
+        from common.state import get_role
+        role_id = get_role(guild_id, platform)
     for post in reversed(new_posts):
         print(f"[NEW POST] [{platform}] @{user['username']}: {post.get('permalink') or post.get('share_url')}")
-        send_notification(user["username"], platform, post, channel_id=channel_id)
+        send_notification(user["username"], platform, post, channel_id=channel_id, role_id=role_id)

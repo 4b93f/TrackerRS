@@ -12,7 +12,7 @@ def get_all_users(platform: str) -> list[dict]:
     with _conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT user_id, username, token, refresh_token, last_media_id, channel_id FROM users WHERE platform = %s",
+                "SELECT user_id, username, token, refresh_token, last_media_id, channel_id, guild_id FROM users WHERE platform = %s",
                 (platform,)
             )
             return [dict(row) for row in cur.fetchall()]
@@ -91,6 +91,27 @@ def set_channel(platform: str, username: str, guild_id: str, channel_id: str) ->
                 (guild_id, channel_id, platform, username)
             )
             return cur.rowcount > 0
+
+
+def get_role(guild_id: str, platform: str) -> str | None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT role_id FROM guild_settings WHERE guild_id = %s AND platform = %s",
+                (guild_id, platform)
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+
+
+def set_role(guild_id: str, platform: str, role_id: str):
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO guild_settings (guild_id, platform, role_id)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (guild_id, platform) DO UPDATE SET role_id = EXCLUDED.role_id
+            """, (guild_id, platform, role_id))
 
 
 def update_last_media_id(platform: str, user_id: str, last_media_id: str):

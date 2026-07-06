@@ -7,7 +7,7 @@ from discord_bot.bot import send_to_channel
 _COLORS = {"instagram": 0xE1306C, "tiktok": 0x69C9D0, "twitch": 0x9147FF}
 
 
-def send_notification(username: str, platform: str, post: dict, channel_id: str | None = None):
+def send_notification(username: str, platform: str, post: dict, channel_id: str | None = None, role_id: str | None = None):
     if platform == "twitch":
         title = f"🔴 {username} is live!"
         url = post.get("url", f"https://twitch.tv/{username}")
@@ -42,9 +42,14 @@ def send_notification(username: str, platform: str, post: dict, channel_id: str 
     if image_url:
         embed.set_image(url=image_url)
 
-    if channel_id:
-        send_to_channel(int(channel_id), embed)
-    else:
-        requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed.to_dict()]})
+    content = f"<@&{role_id}>" if role_id else None
 
-    print(f"[DISCORD] Notification sent for @{username} ({platform})")
+    if channel_id:
+        send_to_channel(int(channel_id), embed, content=content)
+    else:
+        payload = {"embeds": [embed.to_dict()]}
+        if content:
+            payload["content"] = content
+        requests.post(DISCORD_WEBHOOK_URL, json=payload)
+
+    print(f"[DISCORD] Notification sent for @{username} ({platform})", flush=True)

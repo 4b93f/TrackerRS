@@ -29,6 +29,8 @@ def webhook():
         if not channel:
             print(f"[TWITCH] No channel found for {user_id}, skipping", flush=True)
         else:
+            from common.state import get_role
+            role_id = get_role(channel.get("guild_id"), "twitch") if channel.get("guild_id") else None
             stream = get_stream_info(user_id)
             print(f"[TWITCH] Stream info: title={stream.get('title')} game={stream.get('game_name')}", flush=True)
             post = {
@@ -37,6 +39,6 @@ def webhook():
                 "url": f"https://twitch.tv/{event.get('broadcaster_user_login', '')}",
                 "thumbnail_url": stream.get("thumbnail_url", "").replace("{width}", "1280").replace("{height}", "720"),
             }
-            send_notification(username, "twitch", post, channel_id=channel.get("channel_id"))
+            send_notification(username, "twitch", post, channel_id=channel.get("channel_id"), role_id=role_id)
 
     return "", 204

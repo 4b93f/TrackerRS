@@ -12,6 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (platform, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS guild_settings (
+    guild_id TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    role_id TEXT,
+    PRIMARY KEY (guild_id, platform)
+);
+
 CREATE TABLE IF NOT EXISTS twitch_channels (
     user_id TEXT PRIMARY KEY,
     username TEXT NOT NULL,

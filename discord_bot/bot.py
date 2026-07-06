@@ -124,6 +124,22 @@ async def unlink(interaction: discord.Interaction, platform: app_commands.Choice
     await interaction.response.send_message(f"Stopped tracking **@{username}** on {platform.name}.", ephemeral=True)
 
 
+@tree.command(name="setrole", description="Set a role to ping for a platform's notifications")
+@app_commands.describe(platform="Platform", role="Role to ping")
+@app_commands.choices(platform=[
+    app_commands.Choice(name="TikTok", value="tiktok"),
+    app_commands.Choice(name="Instagram", value="instagram"),
+    app_commands.Choice(name="Twitch", value="twitch"),
+])
+async def setrole(interaction: discord.Interaction, platform: app_commands.Choice[str], role: discord.Role):
+    from common.state import set_role
+    await asyncio.to_thread(set_role, str(interaction.guild_id), platform.value, str(role.id))
+    print(f"[DISCORD BOT] Role {role.id} set for {platform.value} in guild {interaction.guild_id}", flush=True)
+    await interaction.response.send_message(
+        f"{platform.name} notifications will now ping **@{role.name}**.", ephemeral=True
+    )
+
+
 @tree.command(name="setchannel", description="Send all notifications for this server to this channel")
 async def setchannel(interaction: discord.Interaction):
     channel_id = str(interaction.channel_id)
@@ -162,20 +178,20 @@ async def test(interaction: discord.Interaction, platform: app_commands.Choice[s
         await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
-async def _send_embed(channel_id: int, embed: discord.Embed):
+async def _send_embed(channel_id: int, embed: discord.Embed, content: str | None = None):
     channel = client.get_channel(channel_id)
     if channel:
-        await channel.send(embed=embed)
+        await channel.send(content=content, embed=embed)
         print(f"[DISCORD BOT] Embed sent to channel {channel_id}", flush=True)
     else:
         print(f"[DISCORD BOT] Channel {channel_id} not found", flush=True)
 
 
-def send_to_channel(channel_id: int, embed: discord.Embed):
+def send_to_channel(channel_id: int, embed: discord.Embed, content: str | None = None):
     if not client.is_ready():
         print(f"[DISCORD BOT] Bot not ready, skipping notification to {channel_id}", flush=True)
         return
-    asyncio.run_coroutine_threadsafe(_send_embed(channel_id, embed), client.loop)
+    asyncio.run_coroutine_threadsafe(_send_embed(channel_id, embed, content), client.loop)
 
 
 def start():
