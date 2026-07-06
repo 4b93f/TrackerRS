@@ -83,6 +83,16 @@ def set_guild_channel(guild_id: str, channel_id: str) -> int:
             return cur.rowcount
 
 
+def set_platform_channel(guild_id: str, platform: str, channel_id: str) -> int:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET channel_id = %s, updated_at = NOW() WHERE guild_id = %s AND platform = %s",
+                (channel_id, guild_id, platform)
+            )
+            return cur.rowcount
+
+
 def set_channel(platform: str, username: str, guild_id: str, channel_id: str) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:

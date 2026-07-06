@@ -135,20 +135,35 @@ async def setrole(interaction: discord.Interaction, platform: app_commands.Choic
         await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
-@tree.command(name="setchannel", description="Send all notifications for this server to this channel")
-async def setchannel(interaction: discord.Interaction):
+@tree.command(name="setchannel", description="Set the notification channel for a platform (or all)")
+@app_commands.describe(platform="Platform (leave empty for all)")
+@app_commands.choices(platform=[
+    app_commands.Choice(name="TikTok", value="tiktok"),
+    app_commands.Choice(name="Instagram", value="instagram"),
+    app_commands.Choice(name="Twitch", value="twitch"),
+])
+async def setchannel(interaction: discord.Interaction, platform: app_commands.Choice[str] | None = None):
     channel_id = str(interaction.channel_id)
     guild_id = str(interaction.guild_id)
-    print(f"[DISCORD BOT] /setchannel guild {guild_id} -> channel {channel_id}", flush=True)
+    print(f"[DISCORD BOT] /setchannel {platform.value if platform else 'all'} guild {guild_id} -> channel {channel_id}", flush=True)
 
-    from common.state import set_guild_channel
-    from twitch.state import set_guild_channel as twitch_set_guild_channel
-    count = await asyncio.to_thread(set_guild_channel, guild_id, channel_id)
-    count += await asyncio.to_thread(twitch_set_guild_channel, guild_id, channel_id)
-    await interaction.response.send_message(
-        f"Done. {count} tracked account(s) will now send notifications to this channel.",
-        ephemeral=True,
-    )
+    try:
+        from common.state import set_guild_channel, set_platform_channel
+        from twitch.state import set_guild_channel as twitch_set_guild_channel
+
+        if platform is None:
+            count = await asyncio.to_thread(set_guild_channel, guild_id, channel_id)
+            count += await asyncio.to_thread(twitch_set_guild_channel, guild_id, channel_id)
+            await interaction.response.send_message(f"Done. {count} account(s) now send to this channel.", ephemeral=True)
+        elif platform.value == "twitch":
+            count = await asyncio.to_thread(twitch_set_guild_channel, guild_id, channel_id)
+            await interaction.response.send_message(f"Twitch notifications now go to this channel ({count} updated).", ephemeral=True)
+        else:
+            count = await asyncio.to_thread(set_platform_channel, guild_id, platform.value, channel_id)
+            await interaction.response.send_message(f"{platform.name} notifications now go to this channel ({count} updated).", ephemeral=True)
+    except Exception as e:
+        print(f"[DISCORD BOT] /setchannel error: {e}", flush=True)
+        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
 
 
 @tree.command(name="test", description="Send a test notification to this channel")
