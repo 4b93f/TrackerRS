@@ -1,7 +1,7 @@
 import os
 import threading
 
-from flask import Flask
+from flask import Flask, render_template
 
 from instagram.routes import bp as instagram_bp
 from instagram.api import fetch_recent_media
@@ -17,6 +17,16 @@ app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 app.register_blueprint(instagram_bp)
 app.register_blueprint(tiktok_bp)
 app.register_blueprint(twitch_bp)
+
+
+@app.route("/tos")
+def tos():
+    return render_template("tos.html")
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
 
 
 def _tiktok_refresh(platform: str, user_id: str, refresh_tok: str) -> str | None:
